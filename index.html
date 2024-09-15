@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Sunset/Sunrise Countdown</title>
+	<style>
+		body {
+			text-align: center;
+			font-family: Arial, sans-serif;
+			padding: 50px;
+		}
+		#countdown {
+			font-size: 48px;
+			margin-top: 20px;
+		}
+		#loading {
+			font-size: 24px;
+			color: gray;
+		}
+	</style>
+</head>
+<body>
+
+	<h1>Next Sunset/Sunrise Countdown</h1>
+	<div id="loading">Fetching your location...</div>
+	<div id="countdown" style="display: none;"></div>
+
+	<script>
+		// Function to retrieve user's location
+		function getLocation() {
+			if (navigator.geolocation) {
+				navigator.geolocation.getCurrentPosition(successCallback, errorCallback);
+			} else {
+				document.getElementById("loading").innerText = "Geolocation is not supported by this browser.";
+			}
+		}
+
+		// Success callback when location is fetched
+		function successCallback(position) {
+			const latitude = position.coords.latitude;
+			const longitude = position.coords.longitude;
+
+			// Remove loading text and show countdown div
+			document.getElementById("loading").style.display = 'none';
+			document.getElementById("countdown").style.display = 'block';
+
+			// Fetch sunrise and sunset data
+			getSunriseSunset(latitude, longitude);
+		}
+
+		// Error callback when location cannot be fetched
+		function errorCallback(error) {
+			document.getElementById("loading").innerText = "Unable to retrieve location. Please allow location access.";
+		}
+
+		// Function to get sunrise and sunset times from API
+		function getSunriseSunset(lat, lon) {
+			const apiUrl = `https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lon}&formatted=0`;
+
+			fetch(apiUrl)
+				.then(response => response.json())
+				.then(data => {
+					const sunrise = new Date(data.results.sunrise);
+					const sunset = new Date(data.results.sunset);
+					const now = new Date();
+
+					// Check which event is next (sunrise or sunset)
+					let nextEvent;
+					if (now < sunset) {
+						nextEvent = sunset;
+					} else {
+						// If it's after sunset, the next event will be tomorrow's sunrise
+						const nextSunrise = new Date(sunrise);
+						nextSunrise.setDate(nextSunrise.getDate() + 1);
+						nextEvent = nextSunrise;
+					}
+
+					// Start countdown
+					startCountdown(nextEvent);
+				})
+				.catch(error => {
+					document.getElementById("loading").innerText = "Error retrieving sunrise/sunset data.";
+					console.log(error);
+				});
+		}
+
+		// Function to start the countdown timer
+		function startCountdown(eventTime) {
+			const countdownElement = document.getElementById("countdown");
+
+			function updateCountdown() {
+				const now = new Date();
+				const timeRemaining = eventTime - now;
+
+				if (timeRemaining <= 0) {
+					clearInterval(interval);
+					countdownElement.innerHTML = "The event is happening now!";
+					return;
+				}
+
+				const hours = Math.floor((timeRemaining / (1000 * 60 * 60)) % 24);
+				const minutes = Math.floor((timeRemaining / (1000 * 60)) % 60);
+				const seconds = Math.floor((timeRemaining / 1000) % 60);
+
+				countdownElement.innerHTML = `${hours}h ${minutes}m ${seconds}s`;
+			}
+
+			// Update countdown every second
+			const interval = setInterval(updateCountdown, 1000);
+		}
+
+		// Initiate location fetching when the page loads
+		getLocation();
+	</script>
+
+</body>
+</html>
